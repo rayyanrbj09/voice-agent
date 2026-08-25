@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: posrtgres:latest
+    container_name: postgres-voiceagent
+    restart: always
+    environment:
+      POSTGRES_USER : voiceagent
+      POSTGRES_PASSWORD : voiceagent_password
+      POSTGRES_DB : voiceagent_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: posrtgres:latest
+    image: postgres:latest
     container_name: postgres-voiceagent
     restart: always
     environment:

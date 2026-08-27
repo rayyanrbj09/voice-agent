@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER : voiceagent
       POSTGRES_PASSWORD : voiceagent_password
-      POSTGRES_DB : voiceagent_db
+      POSTGRES_DB : voiceagent
     ports:
       - "5433:5432"
     volumes:

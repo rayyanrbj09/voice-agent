@@ -30,7 +30,7 @@ def create_customer(
         created_by_user_id = user_id
     )
     db.add(customer)
-    db.commit()
+    db.commit() 
     db.refresh(customer)
 
     return customer

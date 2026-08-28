@@ -104,7 +104,8 @@ def get_current_user(
                 detail="User account is inactive",
             )
 
-        return db.query(User).filter(User.id == user_id).first()
+        # return db.query(User).filter(User.id == user_id).first()
+        return user 
 
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):

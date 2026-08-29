@@ -15,6 +15,11 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    customers: Mapped[list["Customer"]] = relationship(
+        "Customer",
+        back_populates="created_by",
+        )
+
 class Customer(Base):
     __tablename__ = "customers"
 

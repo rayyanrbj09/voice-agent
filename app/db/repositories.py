@@ -87,8 +87,9 @@ def update_customer(
     if company is not None:
         customer.company = company
 
-    db.delete(Customer)
+    # db.delete(Customer) 
     db.commit()
+    db.refresh(customer)
 
     return customer
 

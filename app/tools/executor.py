@@ -3,6 +3,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.tools import tool_registry
+from app.tools.registry import ToolRegistry
 
 
 class ToolExecutionError(Exception):
@@ -14,6 +15,7 @@ def execute_tool(
     user_id: int,
     tool_name: str,
     arguments: dict[str, Any],
+    registry: ToolRegistry | None = None,
 ) -> Any:
     """
     Execute a registered tool on behalf of an authenticated user.
@@ -23,7 +25,7 @@ def execute_tool(
     """
 
     try:
-        tool = tool_registry.get(tool_name)
+        tool = (registry or tool_registry).get(tool_name)
     except KeyError as exc:
         raise ToolExecutionError(
             f"Unknown tool: {tool_name}"

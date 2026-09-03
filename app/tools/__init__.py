@@ -7,4 +7,5 @@ tool_registry.register(
     name='search_customer',
     description="Search customers belonging to the authenticated user by name, email, phone, or company.",
     function=search_customer,
+    input_schema={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"], "additionalProperties": False},
 )

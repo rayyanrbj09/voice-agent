@@ -7,6 +7,7 @@ class ToolDefination:
     name : str
     description: str
     function : Callable[..., Any]
+    input_schema: dict[str, Any]
 
 
 class ToolRegistry:
@@ -17,7 +18,8 @@ class ToolRegistry:
             self,
             name: str,
             description: str,
-            function: Callable[..., Any]
+            function: Callable[..., Any],
+            input_schema: dict[str, Any] | None = None,
     ) -> None:
         if name in self.__tools:
             raise ValueError(f"Tool already registeres: {name}")
@@ -26,7 +28,8 @@ class ToolRegistry:
         self.__tools[name]= ToolDefination(
             name=name,
             description=description,
-            function=function
+            function=function,
+            input_schema=input_schema or {"type": "object", "properties": {}},
         )  
 
     def get(self, name:str) -> ToolDefination:

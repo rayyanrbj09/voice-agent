@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 class CustomerCreate(BaseModel):
     name : str
-    email : EmailStr | None = None
+    email : EmailStr
     phone : str | None = None
     company: str | None = None
 

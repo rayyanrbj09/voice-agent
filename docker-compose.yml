@@ -1,8 +1,7 @@
 services:
   postgres:
     image: postgres:18
-    container_name: postgres-voiceagent
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER : voiceagent
       POSTGRES_PASSWORD : voiceagent_password
@@ -11,6 +10,18 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
+
+  api:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql+psycopg2://voiceagent:voiceagent_password@postgres:5432/voiceagent
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+    ports:
+      - "8000:8000"
 
 volumes:
   postgres_data:

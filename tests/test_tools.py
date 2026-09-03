@@ -1,28 +1,8 @@
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
 from app.main import app
-from app.db.database import Base, get_db
+from app.db.database import get_db
 from app.tools.customer import search_customer
-
-
-TEST_DATABASE_URL = "sqlite://"
-
-engine = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-
-TestingSessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine,
-)
-
-Base.metadata.create_all(bind=engine)
+from conftest import TestingSessionLocal
 
 
 def override_get_db():
@@ -37,12 +17,6 @@ def override_get_db():
 app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
-
-
-def setup_function():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-
 
 def register_and_login(email: str):
     client.post(

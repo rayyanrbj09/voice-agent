@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
@@ -40,12 +41,12 @@ def create_customer(
 
         return customer
 
-    except Exception:
+    except IntegrityError as exc:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not create customer",
-        )
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A customer with this email already exists.",
+        ) from exc
 
 
 @router.get(

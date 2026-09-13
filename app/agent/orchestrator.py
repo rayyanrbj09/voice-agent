@@ -1,4 +1,5 @@
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any, Protocol
 from uuid import uuid4
@@ -12,6 +13,8 @@ from app.agent.prompts import SYSTEM_PROMPT
 from app.core.config import Settings
 from app.tools.executor import ToolExecutionError, execute_tool
 from app.tools.registry import ToolRegistry
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -44,6 +47,7 @@ class AnthropicProvider:
         self._max_tokens = settings.agent_max_tokens
 
     def create_message(self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> ProviderResponse:
+        logger.debug("Calling Anthropic model=%s message_count=%s tool_count=%s", self._model, len(messages), len(tools))
         response = self._client.messages.create(model=self._model, max_tokens=self._max_tokens, system=system, messages=messages, tools=tools)
         content: list[dict[str, Any]] = []
         for block in response.content:
@@ -68,6 +72,7 @@ class OllamaProvider:
         self._temperature = settings.ollama_temperature
 
     def create_message(self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> ProviderResponse:
+        logger.debug("Calling Ollama model=%s message_count=%s tool_count=%s", self._model, len(messages), len(tools))
         response = self._client.chat(
             model=self._model,
             messages=self._to_ollama_messages(system, messages),
@@ -161,11 +166,13 @@ class VoiceAgent:
         tool_calls: list[str] = []
 
         for _ in range(self._max_tool_rounds + 1):
+            logger.debug("Agent provider round=%s session_id=%s user_id=%s", len(tool_calls) + 1, session_id, user_id)
             response = self._provider.create_message(system=SYSTEM_PROMPT, messages=messages, tools=self._tool_specs())
             assistant_message = {"role": "assistant", "content": response.content}
             messages.append(assistant_message)
             requested_tools = [block for block in response.content if block["type"] == "tool_use"]
             if not requested_tools:
+                logger.info("Agent response completed session_id=%s tool_calls=%s", session_id, tool_calls)
                 text = "\n".join(block["text"] for block in response.content if block["type"] == "text").strip()
                 self._memory.append(session_id, user_message)
                 self._memory.append(session_id, assistant_message)
@@ -179,6 +186,7 @@ class VoiceAgent:
                     value = execute_tool(db=db, user_id=user_id, tool_name=tool_call["name"], arguments=tool_call["input"], registry=self._registry)
                     results.append({"type": "tool_result", "tool_use_id": tool_call["id"], "content": self._serialize(value)})
                 except ToolExecutionError as exc:
+                    logger.warning("Agent tool failed tool=%s session_id=%s", tool_call["name"], session_id)
                     results.append({"type": "tool_result", "tool_use_id": tool_call["id"], "content": str(exc), "is_error": True})
             messages.append({"role": "user", "content": results})
         raise RuntimeError("The agent exceeded the maximum number of tool rounds.")

@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -8,6 +9,9 @@ from app.tools.registry import ToolRegistry
 
 class ToolExecutionError(Exception):
     """Raised when a tool cannot be executed safely."""
+
+
+logger = logging.getLogger(__name__)
 
 
 def execute_tool(
@@ -32,6 +36,7 @@ def execute_tool(
         ) from exc
 
     try:
+        logger.info("Executing tool tool=%s user_id=%s", tool_name, user_id)
         return tool.function(
             db=db,
             user_id=user_id,
@@ -46,6 +51,7 @@ def execute_tool(
             f"Tool {tool_name} could not complete: {exc}"
         ) from exc
     except Exception as exc:
+        logger.exception("Tool failed tool=%s user_id=%s", tool_name, user_id)
         raise ToolExecutionError(
             f"Tool execution failed: {tool_name}: {exc}"
         ) from exc

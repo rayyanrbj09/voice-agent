@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     ollama_temperature: float = 0.1
     agent_max_tokens: int = 128
     agent_max_tool_rounds: int = 4
+    log_level: str = "INFO"
+    log_dir: str = "logs"
+    log_file: str = "logs/voice-agent.log"
+    log_max_bytes: int = 10 * 1024 * 1024
+    log_backup_count: int = 5
 
     model_config = SettingsConfigDict(
         env_file=".env",

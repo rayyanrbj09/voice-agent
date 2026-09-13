@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -20,6 +22,7 @@ router = APIRouter(
     prefix="/auth",
     tags=["auth"],
 )
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
 
@@ -31,6 +34,7 @@ def register_user(user_create: UserCreate, db: Session = Depends(get_db)):
     existing_user = (db.query(User).filter(User.email == user_create.email).first())
 
     if existing_user:
+        logger.warning("Registration rejected for existing email")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
@@ -45,6 +49,7 @@ def register_user(user_create: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+    logger.info("User registered user_id=%s", user.id)
 
     return user
 
@@ -56,6 +61,7 @@ def login(
     user = db.query(User).filter(User.email == login_request.email).first()
 
     if not user or not verify_password(login_request.password, user.hashed_password):
+        logger.warning("Login failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -69,6 +75,7 @@ def login(
         )
 
     access_token = create_access_token(user_id=str(user.id))
+    logger.info("User authenticated user_id=%s", user.id)
 
     return Token(access_token=access_token, token_type="bearer"
 )
@@ -83,6 +90,7 @@ def get_current_user(
             payload = decode_access_token(token)
             user_id = payload.get("sub")
         except HTTPException as e:
+            logger.warning("Token validation failed")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials. Invalid token or expired.",
@@ -92,6 +100,7 @@ def get_current_user(
         user = db.query(User).filter(User.id == user_id).first()
 
         if user is None:
+            logger.warning("Token references missing user")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials. Invalid token or expired.",

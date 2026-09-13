@@ -43,22 +43,23 @@ def test_ollama_provider_uses_local_chat_api_and_normalizes_tool_calls():
     request = {}
 
     class FakeResponse:
-        def raise_for_status(self):
-            pass
-
-        def json(self):
-            return {"message": {"content": "Searching.", "tool_calls": [{"function": {"name": "lookup", "arguments": {"query": "Rayyan"}}}]}}
+        message = SimpleNamespace(
+            content="Searching.",
+            tool_calls=[SimpleNamespace(function=SimpleNamespace(name="lookup", arguments={"query": "Rayyan"}))],
+        )
 
     class FakeClient:
-        def post(self, url, json):
-            request["url"] = url
-            request["body"] = json
+        def chat(self, **kwargs):
+            request.update(kwargs)
             return FakeResponse()
 
     settings = Settings.model_construct(
-        ollama_base_url="http://localhost:11434/",
+        ollama_base_url="http://localhost:11434",
         ollama_model="llama3.1:8b",
         ollama_timeout_seconds=1,
+        ollama_keep_alive="10m",
+        ollama_context_length=2048,
+        ollama_temperature=0.1,
         agent_max_tokens=32,
     )
     provider = OllamaProvider(settings, client=FakeClient())
@@ -68,10 +69,10 @@ def test_ollama_provider_uses_local_chat_api_and_normalizes_tool_calls():
         tools=[{"name": "lookup", "description": "Looks up values.", "input_schema": {"type": "object"}}],
     )
 
-    assert request["url"] == "http://localhost:11434/api/chat"
-    assert request["body"]["model"] == "llama3.1:8b"
-    assert request["body"]["options"] == {"num_predict": 32}
-    assert request["body"]["messages"][0] == {"role": "system", "content": "System prompt"}
+    assert request["model"] == "llama3.1:8b"
+    assert request["options"] == {"num_predict": 32, "num_ctx": 2048, "temperature": 0.1}
+    assert request["keep_alive"] == "10m"
+    assert request["messages"][0] == {"role": "system", "content": "System prompt"}
     assert response.content == [
         {"type": "text", "text": "Searching."},
         {"type": "tool_use", "id": "ollama-0", "name": "lookup", "input": {"query": "Rayyan"}},

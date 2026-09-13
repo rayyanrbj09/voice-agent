@@ -13,9 +13,12 @@ class Settings(BaseSettings):
     anthropic_workspace_id: str | None = None
     agent_provider: str = "ollama"
     ollama_base_url: str = "http://127.0.0.1:11434"
-    ollama_model: str = "llama3.1:8b"
-    ollama_timeout_seconds: float = 60.0
-    agent_max_tokens: int = 256
+    ollama_model: str = "llama3.2:3b"
+    ollama_timeout_seconds: float = 180.0
+    ollama_keep_alive: str = "10m"
+    ollama_context_length: int = 2048
+    ollama_temperature: float = 0.1
+    agent_max_tokens: int = 128
     agent_max_tool_rounds: int = 4
 
     model_config = SettingsConfigDict(

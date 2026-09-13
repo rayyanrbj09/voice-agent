@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 from uuid import uuid4
 
-import httpx
+import ollama
 from sqlalchemy.orm import Session
 
 from app.agent.guardrails import validate_user_message
@@ -55,37 +55,53 @@ class AnthropicProvider:
 
 
 class OllamaProvider:
-    """Adapter for Ollama's local chat and tool-calling API."""
+    """Adapter for Ollama's Python client and tool-calling API."""
 
-    def __init__(self, settings: Settings, client: httpx.Client | None = None):
-        self._client = client or httpx.Client(timeout=settings.ollama_timeout_seconds)
-        self._base_url = settings.ollama_base_url.rstrip("/")
+    def __init__(self, settings: Settings, client: Any | None = None):
+        self._client = client or ollama.Client(
+            timeout=settings.ollama_timeout_seconds,
+        )
         self._model = settings.ollama_model
         self._max_tokens = settings.agent_max_tokens
+        self._keep_alive = settings.ollama_keep_alive
+        self._context_length = settings.ollama_context_length
+        self._temperature = settings.ollama_temperature
 
     def create_message(self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> ProviderResponse:
-        response = self._client.post(
-            f"{self._base_url}/api/chat",
-            json={
-                "model": self._model,
-                "messages": self._to_ollama_messages(system, messages),
-                "tools": self._to_ollama_tools(tools),
-                "options": {"num_predict": self._max_tokens},
-                "stream": False,
+        response = self._client.chat(
+            model=self._model,
+            messages=self._to_ollama_messages(system, messages),
+            tools=self._to_ollama_tools(tools),
+            options={
+                "num_predict": self._max_tokens,
+                "num_ctx": self._context_length,
+                "temperature": self._temperature,
             },
+            keep_alive=self._keep_alive,
+            stream=False,
         )
-        response.raise_for_status()
-        message = response.json()["message"]
+        message = response.message
         content: list[dict[str, Any]] = []
-        if text := message.get("content", ""):
+        if text := self._value(message, "content", ""):
             content.append({"type": "text", "text": text})
-        for index, call in enumerate(message.get("tool_calls", [])):
-            function = call["function"]
-            arguments = function.get("arguments", {})
+        for index, call in enumerate(self._value(message, "tool_calls", []) or []):
+            function = self._value(call, "function", {})
+            arguments = self._value(function, "arguments", {})
             if isinstance(arguments, str):
                 arguments = json.loads(arguments)
-            content.append({"type": "tool_use", "id": f"ollama-{index}", "name": function["name"], "input": arguments})
+            content.append({
+                "type": "tool_use",
+                "id": f"ollama-{index}",
+                "name": self._value(function, "name", ""),
+                "input": arguments,
+            })
         return ProviderResponse(content=content)
+
+    @staticmethod
+    def _value(value: Any, key: str, default: Any = None) -> Any:
+        if isinstance(value, dict):
+            return value.get(key, default)
+        return getattr(value, key, default)
 
     @staticmethod
     def _to_ollama_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:

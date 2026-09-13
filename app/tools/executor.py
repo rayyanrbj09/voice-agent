@@ -39,9 +39,13 @@ def execute_tool(
         )
     except TypeError as exc:
         raise ToolExecutionError(
-            f"Invalid arguments for tool: {tool_name}"
+            f"Invalid arguments for tool {tool_name}: {exc}"
+        ) from exc
+    except ValueError as exc:
+        raise ToolExecutionError(
+            f"Tool {tool_name} could not complete: {exc}"
         ) from exc
     except Exception as exc:
         raise ToolExecutionError(
-            f"Tool execution failed: {tool_name}"
+            f"Tool execution failed: {tool_name}: {exc}"
         ) from exc

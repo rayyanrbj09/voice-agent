@@ -146,3 +146,26 @@ def test_tool_cannot_choose_user_id_from_arguments():
 
     finally:
         db.close()
+
+
+def test_customer_specific_tools_require_customer_resolution_first():
+    db = TestingSessionLocal()
+
+    try:
+        user = create_test_user(db, "user@example.com")
+
+        with pytest.raises(
+            ToolExecutionError,
+            match="search for the customer first",
+        ):
+            execute_tool(
+                db=db,
+                user_id=user.id,
+                tool_name="book_appointment",
+                arguments={
+                    "starts_at": "2026-10-01T10:00:00",
+                },
+            )
+
+    finally:
+        db.close()

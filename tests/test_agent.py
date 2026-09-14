@@ -129,3 +129,23 @@ def test_agent_rejects_blank_messages_without_calling_provider():
     with pytest.raises(GuardrailViolation, match="must not be empty"):
         VoiceAgent(provider, ToolRegistry()).respond(db=None, user_id=1, message="  ")
     assert provider.requests == []
+
+
+def test_agent_does_not_claim_action_without_matching_tool_result():
+    registry = ToolRegistry()
+    registry.register(
+        name="search_customer",
+        description="Looks up a customer.",
+        input_schema={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+        function=lambda db, user_id, query: [{"id": 42, "name": "Rayyan", "email": "rayyan@example.com"}],
+    )
+    provider = FakeProvider([
+        ProviderResponse(content=[{"type": "tool_use", "id": "tool-1", "name": "search_customer", "input": {"query": "Rayyan"}}]),
+        ProviderResponse(content=[{"type": "text", "text": "I found your customer and I booked an appointment for September 29th at 5pm."}]),
+    ])
+
+    result = VoiceAgent(provider, registry).respond(db=None, user_id=1, message="Find Rayyan")
+
+    assert "booked" not in result.message.lower()
+    assert "customer" in result.message.lower()
+    assert "provide" in result.message.lower()

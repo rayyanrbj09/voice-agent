@@ -174,6 +174,7 @@ class VoiceAgent:
             if not requested_tools:
                 logger.info("Agent response completed session_id=%s tool_calls=%s", session_id, tool_calls)
                 text = "\n".join(block["text"] for block in response.content if block["type"] == "text").strip()
+                text = self._sanitize_final_text(text, tool_calls)
                 self._memory.append(session_id, user_message)
                 self._memory.append(session_id, assistant_message)
                 return AgentResult(session_id=session_id, message=text or "I’m sorry, but I couldn’t generate a response.", tool_calls=tool_calls)
@@ -193,6 +194,37 @@ class VoiceAgent:
 
     def _tool_specs(self) -> list[dict[str, Any]]:
         return [{"name": tool.name, "description": tool.description, "input_schema": tool.input_schema} for tool in self._registry.list_tools()]
+
+    @staticmethod
+    def _sanitize_final_text(text: str, tool_calls: list[str]) -> str:
+        if not text:
+            return text
+
+        action_patterns = (
+            "booked",
+            "created",
+            "cancelled",
+            "updated",
+            "scheduled",
+            "ordered",
+            "raised",
+            "opened",
+            "resolved",
+            "closed",
+        )
+        action_tools = {
+            "book_appointment",
+            "create_order",
+            "create_support_ticket",
+            "cancel_appointment",
+            "update_support_ticket",
+        }
+
+        lowered = text.lower()
+        if any(pattern in lowered for pattern in action_patterns) and not action_tools.intersection(tool_calls):
+            logger.warning("Suppressing unsupported action claim. text=%s tool_calls=%s", text, tool_calls)
+            return "I found the customer information. Please provide the customer details needed to book the appointment, create the order, or raise the support ticket."
+        return text
 
     @staticmethod
     def _serialize(value: Any) -> str:

@@ -35,6 +35,18 @@ def execute_tool(
             f"Unknown tool: {tool_name}"
         ) from exc
 
+    missing = [
+        field for field in (tool.input_schema or {}).get("required", []) if field not in arguments
+    ]
+    if missing:
+        if "customer_id" in missing:
+            raise ToolExecutionError(
+                f"Invalid arguments for tool {tool_name}: customer_id is required. Please search for the customer first and use the resolved customer_id before calling this tool."
+            )
+        raise ToolExecutionError(
+            f"Invalid arguments for tool {tool_name}: missing required arguments: {', '.join(missing)}."
+        )
+
     try:
         logger.info("Executing tool tool=%s user_id=%s", tool_name, user_id)
         return tool.function(

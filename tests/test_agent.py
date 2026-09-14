@@ -149,3 +149,22 @@ def test_agent_does_not_claim_action_without_matching_tool_result():
     assert "booked" not in result.message.lower()
     assert "customer" in result.message.lower()
     assert "provide" in result.message.lower()
+
+
+def test_agent_does_not_claim_success_after_tool_error():
+    registry = ToolRegistry()
+    registry.register(
+        name="book_appointment",
+        description="Books an appointment.",
+        input_schema={"type": "object", "properties": {"customer_id": {"type": "integer"}, "starts_at": {"type": "string"}}, "required": ["customer_id", "starts_at"]},
+        function=lambda db, user_id, customer_id, starts_at: (_ for _ in ()).throw(ValueError("missing customer")),
+    )
+    provider = FakeProvider([
+        ProviderResponse(content=[{"type": "tool_use", "id": "tool-1", "name": "book_appointment", "input": {"customer_id": 42, "starts_at": "2026-09-29T17:00:00"}}]),
+        ProviderResponse(content=[{"type": "text", "text": "I booked the appointment successfully."}]),
+    ])
+
+    result = VoiceAgent(provider, registry).respond(db=None, user_id=1, message="Book it")
+
+    assert "successfully" not in result.message.lower()
+    assert "failed" in result.message.lower() or "missing" in result.message.lower() or "customer" in result.message.lower()

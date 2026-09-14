@@ -174,7 +174,7 @@ class VoiceAgent:
             if not requested_tools:
                 logger.info("Agent response completed session_id=%s tool_calls=%s", session_id, tool_calls)
                 text = "\n".join(block["text"] for block in response.content if block["type"] == "text").strip()
-                text = self._sanitize_final_text(text, tool_calls)
+                text = self._sanitize_final_text(text, tool_calls, messages)
                 self._memory.append(session_id, user_message)
                 self._memory.append(session_id, assistant_message)
                 return AgentResult(session_id=session_id, message=text or "I’m sorry, but I couldn’t generate a response.", tool_calls=tool_calls)
@@ -196,9 +196,19 @@ class VoiceAgent:
         return [{"name": tool.name, "description": tool.description, "input_schema": tool.input_schema} for tool in self._registry.list_tools()]
 
     @staticmethod
-    def _sanitize_final_text(text: str, tool_calls: list[str]) -> str:
+    def _sanitize_final_text(text: str, tool_calls: list[str], messages: list[dict[str, Any]]) -> str:
         if not text:
             return text
+
+        last_tool_message = None
+        for message in reversed(messages):
+            if message.get("role") == "user" and isinstance(message.get("content"), list):
+                for block in reversed(message["content"]):
+                    if isinstance(block, dict) and block.get("type") == "tool_result":
+                        last_tool_message = block
+                        break
+                if last_tool_message is not None:
+                    break
 
         action_patterns = (
             "booked",
@@ -221,6 +231,12 @@ class VoiceAgent:
         }
 
         lowered = text.lower()
+        has_error_tool_result = bool(
+            last_tool_message and last_tool_message.get("is_error")
+        )
+        if has_error_tool_result:
+            logger.warning("Suppressing action success claim because last tool result was an error. text=%s tool_calls=%s", text, tool_calls)
+            return "The action could not be completed. Please check the missing or invalid details and try again."
         if any(pattern in lowered for pattern in action_patterns) and not action_tools.intersection(tool_calls):
             logger.warning("Suppressing unsupported action claim. text=%s tool_calls=%s", text, tool_calls)
             return "I found the customer information. Please provide the customer details needed to book the appointment, create the order, or raise the support ticket."

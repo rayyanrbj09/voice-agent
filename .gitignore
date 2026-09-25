@@ -1,6 +1,43 @@
 .env
+
+# Python environments and caches
+.venv/
+venv/
+env/
+ENV/
 __pycache__/
 *.py[cod]
+*$py.class
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Test and coverage output
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+pytest-report.html
+
+# Notebooks
+.ipynb_checkpoints/
+
+# IDE and operating system files
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local secrets and configuration
+*.local
+*.secret
+
+# Generated runtime files
 *.db
 logs/
+*.sqlite
+*.sqlite3
+*.log

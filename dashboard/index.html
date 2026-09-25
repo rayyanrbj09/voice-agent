@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Agent - Metrics & Observability Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #111827;
+      --card-border: #1f2937;
+      --text: #f9fafb;
+      --text-muted: #9ca3af;
+      --accent: #3b82f6;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #8b5cf6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .title-group h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title-group p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-top: 4px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulsing 1.8s infinite;
+    }
+
+    @keyframes pulsing {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      background: #1f2937;
+      color: var(--text);
+      border: 1px solid #374151;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      background: #374151;
+      border-color: #4b5563;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+    }
+
+    /* Stat Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Charts Grid */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .chart-header h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 250px;
+      width: 100%;
+    }
+
+    /* Table Section */
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .table-card h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+      font-weight: 500;
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #1a2234;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .endpoint-tag {
+      font-family: monospace;
+      background: #1f2937;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 0.8125rem;
+    }
+
+    .tool-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: monospace;
+      background: #1e293b;
+      margin-right: 6px;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>
+          <span>🎙️ Voice Agent Observability</span>
+          <span class="badge"><span class="pulse"></span> LIVE</span>
+        </h1>
+        <p>Real-time metrics, HTTP throughput, latency distribution & agent tool telemetry</p>
+      </div>
+      <div class="header-actions">
+        <label style="font-size: 0.8125rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <input type="checkbox" id="auto-refresh" checked> Auto-refresh (3s)
+        </label>
+        <button class="btn" id="refresh-btn">🔄 Refresh</button>
+        <a class="btn" href="/metrics" target="_blank">📄 Raw /metrics</a>
+        <a class="btn btn-primary" href="/docs" target="_blank">📖 Swagger Docs</a>
+      </div>
+    </header>
+
+    <!-- Stat Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Total HTTP Requests</span>
+        <span class="stat-value" id="val-total-reqs">0</span>
+        <span class="stat-sub">Across all routes</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Success Rate</span>
+        <span class="stat-value" id="val-success-rate" style="color: var(--success);">100%</span>
+        <span class="stat-sub">HTTP 2xx percentage</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Avg Request Latency</span>
+        <span class="stat-value" id="val-avg-latency" style="color: var(--accent);">0.0 ms</span>
+        <span class="stat-sub">Mean response duration</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">In-Flight Requests</span>
+        <span class="stat-value" id="val-in-flight" style="color: var(--warning);">0</span>
+        <span class="stat-sub">Currently executing</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Service Uptime</span>
+        <span class="stat-value" id="val-uptime">0s</span>
+        <span class="stat-sub" id="val-app-info">Voice Agent API v1.0.0</span>
+      </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+      <!-- Chart 1: Status Code Distribution -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>HTTP Status Codes</h3>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">2xx vs 3xx vs 4xx vs 5xx</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: Top Endpoints Traffic -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Traffic by Endpoint</h3>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Request volume by route template</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="endpointsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: Agent Tool Invocations -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Agent Tool Executions</h3>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Success vs Error per tool</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="toolsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 4: Latency Buckets -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Response Latency Distribution</h3>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Histogram buckets</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="latencyChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Endpoints Table -->
+    <div class="table-card">
+      <h3>Active Route Summary</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint Route</th>
+            <th>Total Invocations</th>
+            <th>Proportion</th>
+          </tr>
+        </thead>
+        <tbody id="endpoints-tbody">
+          <tr><td colspan="3" style="text-align: center; color: var(--text-muted);">Waiting for metrics...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    // Chart instances
+    let statusChart, endpointsChart, toolsChart, latencyChart;
+
+    function initCharts() {
+      // 1. Status Chart (Doughnut)
+      const ctxStatus = document.getElementById('statusChart').getContext('2d');
+      statusChart = new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+          labels: ['2xx Success', '3xx Redirect', '4xx Client Err', '5xx Server Err'],
+          datasets: [{
+            data: [0, 0, 0, 0],
+            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+            borderWidth: 0,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right' }
+          }
+        }
+      });
+
+      // 2. Endpoints Chart (Horizontal Bar)
+      const ctxEndpoints = document.getElementById('endpointsChart').getContext('2d');
+      endpointsChart = new Chart(ctxEndpoints, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Requests',
+            data: [],
+            backgroundColor: '#3b82f6',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { grid: { color: '#1f2937' }, beginAtZero: true },
+            y: { grid: { display: false } }
+          }
+        }
+      });
+
+      // 3. Tools Chart (Grouped Bar)
+      const ctxTools = document.getElementById('toolsChart').getContext('2d');
+      toolsChart = new Chart(ctxTools, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [
+            { label: 'Success', data: [], backgroundColor: '#10b981', borderRadius: 4 },
+            { label: 'Error', data: [], backgroundColor: '#ef4444', borderRadius: 4 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { display: false } },
+            y: { grid: { color: '#1f2937' }, beginAtZero: true }
+          }
+        }
+      });
+
+      // 4. Latency Distribution Chart
+      const ctxLatency = document.getElementById('latencyChart').getContext('2d');
+      latencyChart = new Chart(ctxLatency, {
+        type: 'bar',
+        data: {
+          labels: ['<= 10ms', '<= 50ms', '<= 100ms', '<= 500ms', '<= 1s', '> 1s'],
+          datasets: [{
+            label: 'Requests',
+            data: [0, 0, 0, 0, 0, 0],
+            backgroundColor: '#8b5cf6',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { grid: { color: '#1f2937' }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function formatUptime(seconds) {
+      if (seconds < 60) return seconds + 's';
+      if (seconds < 3600) return Math.floor(seconds / 60) + 'm ' + (seconds % 60) + 's';
+      const hours = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      return hours + 'h ' + mins + 'm';
+    }
+
+    async function fetchAndUpdateMetrics() {
+      try {
+        const res = await fetch('/api/metrics/stats');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // Update Stat Cards
+        document.getElementById('val-total-reqs').textContent = data.total_requests;
+        document.getElementById('val-success-rate').textContent = data.success_rate_pct + '%';
+        document.getElementById('val-avg-latency').textContent = data.avg_latency_ms + ' ms';
+        document.getElementById('val-in-flight').textContent = data.requests_in_progress;
+        document.getElementById('val-uptime').textContent = formatUptime(data.uptime_seconds);
+        if (data.app_info) {
+          document.getElementById('val-app-info').textContent = data.app_info.app_name + ' v' + data.app_info.version;
+        }
+
+        // 1. Status Chart
+        const dist = data.status_distribution || {};
+        statusChart.data.datasets[0].data = [
+          dist['2xx'] || 0,
+          dist['3xx'] || 0,
+          dist['4xx'] || 0,
+          dist['5xx'] || 0
+        ];
+        statusChart.update();
+
+        // 2. Endpoints Chart
+        const endpoints = data.endpoints || {};
+        const epLabels = Object.keys(endpoints).sort((a, b) => endpoints[b] - endpoints[a]).slice(0, 8);
+        const epData = epLabels.map(l => endpoints[l]);
+        endpointsChart.data.labels = epLabels;
+        endpointsChart.data.datasets[0].data = epData;
+        endpointsChart.update();
+
+        // 3. Tools Chart
+        const tools = data.tool_executions || {};
+        const toolNames = Object.keys(tools);
+        if (toolNames.length === 0) {
+          toolsChart.data.labels = ['No tool calls yet'];
+          toolsChart.data.datasets[0].data = [0];
+          toolsChart.data.datasets[1].data = [0];
+        } else {
+          toolsChart.data.labels = toolNames;
+          toolsChart.data.datasets[0].data = toolNames.map(t => tools[t].success || 0);
+          toolsChart.data.datasets[1].data = toolNames.map(t => tools[t].error || 0);
+        }
+        toolsChart.update();
+
+        // 4. Latency Chart
+        const buckets = data.latency_buckets || {};
+        latencyChart.data.datasets[0].data = [
+          buckets['<= 10ms'] || 0,
+          buckets['<= 50ms'] || 0,
+          buckets['<= 100ms'] || 0,
+          buckets['<= 500ms'] || 0,
+          buckets['<= 1s'] || 0,
+          buckets['> 1s'] || 0
+        ];
+        latencyChart.update();
+
+        // 5. Table
+        const tbody = document.getElementById('endpoints-tbody');
+        if (epLabels.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No requests recorded yet. Make some requests to see traffic!</td></tr>';
+        } else {
+          const total = data.total_requests || 1;
+          tbody.innerHTML = epLabels.map(ep => {
+            const count = endpoints[ep];
+            const pct = Math.round((count / total) * 100);
+            return `<tr>
+              <td><span class="endpoint-tag">${ep}</span></td>
+              <td><strong>${count}</strong></td>
+              <td>${pct}%</td>
+            </tr>`;
+          }).join('');
+        }
+      } catch (err) {
+        console.error('Error fetching metrics:', err);
+      }
+    }
+
+    // Initialize
+    initCharts();
+    fetchAndUpdateMetrics();
+
+    // Refresh control
+    document.getElementById('refresh-btn').addEventListener('click', fetchAndUpdateMetrics);
+    let intervalId = setInterval(fetchAndUpdateMetrics, 3000);
+
+    document.getElementById('auto-refresh').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        intervalId = setInterval(fetchAndUpdateMetrics, 3000);
+      } else {
+        clearInterval(intervalId);
+      }
+    });
+  </script>
+</body>
+</html>

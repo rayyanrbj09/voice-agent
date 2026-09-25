@@ -25,10 +25,14 @@ def create_order(
 		total_amount=total_amount,
 		status=status,
 	)
-	db.add(order)
-	db.commit()
-	db.refresh(order)
-	return order
+	try:
+		db.add(order)
+		db.commit()
+		db.refresh(order)
+		return order
+	except Exception:
+		db.rollback()
+		raise
 
 
 def list_orders(db: Session, user_id: int, status: str | None = None) -> list[Order]:

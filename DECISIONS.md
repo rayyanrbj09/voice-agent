@@ -1,17 +1,17 @@
 # Voice Agent Architecture Decisions
 
-**Last updated:** 2026-09-14
-**Verified test result:** 43 passed.
+**Last updated:** 2026-09-25
+**Verified test result:** 47 passed.
 
 ## Architecture
 
 ```text
-HTTP API
+HTTP API (Customers, Appointments, Orders, Support Tickets, Agent Chat)
   -> authentication and request validation
-  -> VoiceAgent orchestration
+  -> VoiceAgent orchestration OR direct REST CRUD repository
   -> ToolRegistry / ToolExecutor
-  -> user-scoped business tool
-  -> SQLAlchemy session
+  -> user-scoped business tool / repository
+  -> SQLAlchemy session (with rollback protection)
   -> SQLite or PostgreSQL
 ```
 
@@ -23,7 +23,7 @@ JWT bearer tokens are used for stateless API authentication. Passwords are hashe
 
 ### User-scoped data
 
-Customers, appointments, orders, and support tickets carry ownership fields. Queries for customer-scoped records filter by both record ID and authenticated owner ID.
+Customers, appointments, orders, and support tickets carry ownership fields. Queries for customer-scoped records filter by both record ID and authenticated owner ID (`created_by_user_id`).
 
 ### Tool registry
 
@@ -35,7 +35,15 @@ The model may search a customer by text, but action tools require a resolved `cu
 
 ### Tool errors are data, not success
 
-Tool failures are returned to the model as error results so it can explain the failure. The backend additionally checks the final text: an action claim is suppressed when the latest tool result failed or when no action tool was called. This was added after observing false confirmations in the API response while database tables remained unchanged.
+Tool failures are returned to the model as error results so it can explain the failure. The backend additionally checks the final text: an action claim is suppressed when the latest tool result failed or when no action tool was called.
+
+### Dual-access pattern: Tools & REST APIs
+
+Appointments, orders, and support tickets are accessible both via conversational agent tool-calls and via standard REST CRUD endpoints (`/appointments`, `/orders`, `/support-tickets`). Both layers share common database repository functions and enforce identical ownership checks.
+
+### Safe transaction rollback
+
+All repository functions and business tools now wrap database commit operations in `try ... commit ... except Exception: db.rollback(); raise` blocks to prevent dirty session state upon integrity or database errors.
 
 ### Provider adapters
 
@@ -53,18 +61,17 @@ Conversation history is bounded and process-local. This is sufficient for the cu
 
 - Authentication: `app/api/auth.py`, `app/core/security.py`
 - Customer CRUD: `app/api/customers.py`, `app/db/repositories.py`
+- Appointment CRUD: `app/api/appointments.py`, `app/db/repositories.py`
+- Order CRUD: `app/api/orders.py`, `app/db/repositories.py`
+- Support Ticket CRUD: `app/api/support.py`, `app/db/repositories.py`
 - Agent: `app/agent/orchestrator.py`, `app/agent/memory.py`, `app/agent/prompts.py`, `app/agent/guardrails.py`
 - Tools: `app/tools/registry.py`, `app/tools/executor.py`, `app/tools/customer.py`, `app/tools/appointments.py`, `app/tools/orders.py`, `app/tools/support.py`
 - Models: `User`, `Customer`, `Appointment`, `Order`, `SupportTicket`
 
 ## Known Limitations
 
-- Business tools do not yet have dedicated REST CRUD routes.
-- Tool commits do not yet have a centralized rollback wrapper.
-- Tool error responses are intentionally generic at the final-response boundary; richer safe error details are needed.
-- RAG and voice modules are not part of the active request path.
-- There is no migration system, CI pipeline, coverage gate, or production load test.
-- SQLAlchemy emits a `datetime.utcnow()` deprecation warning.
+- RAG and voice modules are not part of the active request path (pending Phases 5 & 6).
+- There is no migration system (Alembic), CI pipeline, coverage gate, or production load test.
 - FastAPI's current test client path emits a Starlette/httpx deprecation warning.
 
 ## Security Notes

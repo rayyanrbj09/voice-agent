@@ -34,10 +34,14 @@ def book_appointment(
         duration_minutes=duration_minutes,
         notes=notes,
     )
-    db.add(appointment)
-    db.commit()
-    db.refresh(appointment)
-    return appointment
+    try:
+        db.add(appointment)
+        db.commit()
+        db.refresh(appointment)
+        return appointment
+    except Exception:
+        db.rollback()
+        raise
 
 
 def list_appointments(db: Session, user_id: int, status: str | None = None) -> list[Appointment]:
@@ -55,6 +59,10 @@ def cancel_appointment(db: Session, user_id: int, appointment_id: int) -> Appoin
     if appointment is None:
         raise ValueError("Appointment not found.")
     appointment.status = "cancelled"
-    db.commit()
-    db.refresh(appointment)
-    return appointment
+    try:
+        db.commit()
+        db.refresh(appointment)
+        return appointment
+    except Exception:
+        db.rollback()
+        raise

@@ -21,10 +21,14 @@ def create_support_ticket(
 		description=description,
 		priority=priority,
 	)
-	db.add(ticket)
-	db.commit()
-	db.refresh(ticket)
-	return ticket
+	try:
+		db.add(ticket)
+		db.commit()
+		db.refresh(ticket)
+		return ticket
+	except Exception:
+		db.rollback()
+		raise
 
 
 def list_support_tickets(db: Session, user_id: int, status: str | None = None) -> list[SupportTicket]:
@@ -51,6 +55,10 @@ def update_support_ticket(
 		ticket.status = status
 	if priority is not None:
 		ticket.priority = priority
-	db.commit()
-	db.refresh(ticket)
-	return ticket
+	try:
+		db.commit()
+		db.refresh(ticket)
+		return ticket
+	except Exception:
+		db.rollback()
+		raise

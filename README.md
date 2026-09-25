@@ -1,12 +1,12 @@
 # Voice Agent
 
-FastAPI backend for an authenticated customer assistant with customer search, appointments, orders, support tickets, and LLM tool orchestration.
+FastAPI backend for an authenticated customer assistant with customer search, appointments, orders, support tickets, REST APIs, and LLM tool orchestration.
 
 ## Current Status
 
-The core backend and agent workflow are implemented. The application can authenticate users, manage customers, run customer-scoped business tools, and expose the agent through `POST /agent/chat`.
+The core backend, REST APIs, and agent workflow are implemented. The application can authenticate users, manage customers, manage appointments, orders, and support tickets via REST endpoints or LLM tools, and expose conversational agent chat through `POST /agent/chat`.
 
-The latest full test run passed **43 tests**. The suite still emits dependency and datetime deprecation warnings; these do not currently fail tests.
+The latest full test run passed **47 tests** with 0 failures.
 
 ## Implemented
 
@@ -17,11 +17,15 @@ The latest full test run passed **43 tests**. The suite still emits dependency a
 - JWT authentication and Argon2 password hashing in [app/core/security.py](app/core/security.py)
 - Environment configuration through pydantic-settings in [app/core/config.py](app/core/config.py)
 - Authenticated customer CRUD routes in [app/api/customers.py](app/api/customers.py)
+- Authenticated appointment CRUD and cancellation routes in [app/api/appointments.py](app/api/appointments.py)
+- Authenticated order CRUD routes in [app/api/orders.py](app/api/orders.py)
+- Authenticated support ticket CRUD routes in [app/api/support.py](app/api/support.py)
 - `POST /agent/chat` in [app/api/agent.py](app/api/agent.py)
 
-### Database
+### Database and Repositories
 
-[app/db/models.py](app/db/models.py) defines `users`, `customers`, `appointments`, `orders`, and `support_tickets` tables. The application creates these tables at startup with SQLAlchemy `Base.metadata.create_all`. Migrations are not yet configured.
+- [app/db/models.py](app/db/models.py) defines `users`, `customers`, `appointments`, `orders`, and `support_tickets` tables. Uses timezone-aware UTC datetime defaults.
+- [app/db/repositories.py](app/db/repositories.py) provides isolated, user-scoped data access with transaction rollback protection on errors.
 
 ### Agent and tools
 
@@ -34,7 +38,7 @@ The latest full test run passed **43 tests**. The suite still emits dependency a
 - Order creation and listing
 - Support ticket creation, listing, and updates
 
-All customer-scoped tools verify that the customer belongs to the authenticated user. The LLM cannot provide or override `user_id`; the backend injects it.
+All customer-scoped tools and REST routes verify that records belong to the authenticated user. The LLM cannot provide or override `user_id`; the backend injects it.
 
 ## Customer-First Workflow
 
@@ -84,17 +88,15 @@ For Docker, use `docker compose up --build`.
 .\.venv\Scripts\python.exe -m pytest tests/ -q
 ```
 
-Latest verified result: **43 passed**.
+Latest verified result: **47 passed**.
 
 ## Remaining Work
 
-- Add public CRUD API routes for appointments, orders, and support tickets; they currently exist as database models and agent tools.
-- Add transaction rollback handling around tool commits.
+- Complete Phase 6: Voice I/O (STT, TTS, WebSocket bidirectional streaming).
+- Complete Phase 5: RAG ingestion, embeddings, and retrieval integration.
+- Complete Phase 10: Telephony (Twilio/SIP) and call webhook workflows.
 - Replace startup `create_all` with Alembic migrations.
-- Complete RAG ingestion, embeddings, and retrieval integration.
-- Complete STT, TTS, telephony, WebSocket, calls, and webhook workflows.
 - Add persistent conversation memory and production session storage.
-- Improve final error messages by preserving the specific tool failure safely.
 - Add CI, coverage thresholds, structured tool-result metrics, and end-to-end provider tests.
 
 ## Repository Documents

@@ -1,8 +1,8 @@
 # Voice Agent Phases
 
-**Last updated:** 2026-09-14
-**Current state:** Core backend and agent orchestration complete; integrations and production hardening remain.
-**Latest test result:** 43 passed.
+**Last updated:** 2026-09-25
+**Current state:** Core backend, business REST APIs, agent orchestration, and business tools complete; RAG, Voice I/O, and production hardening remain.
+**Latest test result:** 47 passed.
 
 ## Status Summary
 
@@ -14,9 +14,9 @@
 | 4 | Agent orchestration | Complete for current providers |
 | 5 | RAG | Pending |
 | 6 | Voice I/O | Pending |
-| 7 | Appointment business tools | Complete; API routes pending |
-| 8 | Order business tools | Complete; API routes pending |
-| 9 | Support-ticket business tools | Complete; API routes pending |
+| 7 | Appointment business tools & REST API | Complete |
+| 8 | Order business tools & REST API | Complete |
+| 9 | Support-ticket business tools & REST API | Complete |
 | 10 | Calls and webhooks | Pending |
 | 11 | Evaluation framework | Partial scaffolding |
 | 12 | Production deployment and hardening | Pending |
@@ -35,7 +35,7 @@
 ### Phase 2: Customer Management
 
 - Customer model and user ownership
-- Customer CRUD API
+- Customer CRUD API (`/customers`)
 - Repository and Pydantic schema layers
 - Search by name, email, phone, and company
 - Cross-user access protection
@@ -57,15 +57,21 @@
 - Tool-result serialization
 - False-success protection: the agent no longer confirms an action when the action tool failed or was never called
 
-### Phases 7-9: Business Tools
+### Phases 7-9: Business Tools & REST APIs
 
-Implemented tools:
+Implemented tools & endpoints:
 
-- `book_appointment`, `list_appointments`, `cancel_appointment`
-- `create_order`, `list_orders`
-- `create_support_ticket`, `list_support_tickets`, `update_support_ticket`
+- **Appointments** (`/appointments`):
+  - Agent tools: `book_appointment`, `list_appointments`, `cancel_appointment`
+  - REST CRUD: `POST /appointments`, `GET /appointments`, `GET /appointments/{id}`, `PATCH /appointments/{id}`, `POST /appointments/{id}/cancel`, `DELETE /appointments/{id}`
+- **Orders** (`/orders`):
+  - Agent tools: `create_order`, `list_orders`
+  - REST CRUD: `POST /orders`, `GET /orders`, `GET /orders/{id}`, `PATCH /orders/{id}`, `DELETE /orders/{id}`
+- **Support Tickets** (`/support-tickets`):
+  - Agent tools: `create_support_ticket`, `list_support_tickets`, `update_support_ticket`
+  - REST CRUD: `POST /support-tickets`, `GET /support-tickets`, `GET /support-tickets/{id}`, `PATCH /support-tickets/{id}`, `DELETE /support-tickets/{id}`
 
-These tools write to or read from the database and enforce authenticated-user ownership. They are available through the agent, but dedicated REST CRUD endpoints are not yet implemented.
+All operations enforce authenticated-user ownership and customer ownership validation. Centralized rollback error handling is now included across all repository and tool write operations.
 
 ## Remaining Work
 
@@ -91,25 +97,18 @@ Datasets, metrics, and failure-analysis modules need a repeatable evaluation pip
 - CI/CD and coverage gates
 - production secret management
 - observability dashboards and tool failure metrics
-- retries, transaction rollback, rate limits, and load testing
+- retries, rate limits, and load testing
 
-## Resolved Bug: False Success After Tool Failure
+## Resolved Bugs & Improvements
 
-The logs exposed a serious behavior: an internal tool could fail while the LLM returned a successful-looking message. The database correctly contained no new appointment/order/ticket, but the API response claimed that one had been created.
-
-The implemented fix is:
-
-1. The executor validates required arguments.
-2. Tool errors are returned to the orchestration loop as error results.
-3. The final response guard checks the latest tool result.
-4. Unsupported or failed action claims are replaced with a failure/request-for-details response.
-
-This behavior is covered by regression tests in `tests/test_agent.py`.
+1. **False Success After Tool Failure**: Suppressed hallucinated confirmations if tools failed or were skipped (regression covered in `tests/test_agent.py`).
+2. **`datetime.utcnow()` Deprecation**: Replaced deprecated `datetime.utcnow` with timezone-aware `utc_now` callable across all SQLAlchemy models.
+3. **Transaction Rollback Protection**: Added explicit `db.rollback()` handling on commit exceptions in repositories and tools.
+4. **Tool-to-REST Integration Verification**: Added automated integration tests verifying that rows created by agent tools are immediately retrievable via the REST API.
 
 ## Next Recommended Order
 
-1. Add integration tests that verify successful tool calls create rows in all three business tables.
-2. Add REST endpoints for appointments, orders, and support tickets.
-3. Improve error propagation and rollback behavior.
-4. Add persistent memory and provider-independent end-to-end tests.
-5. Implement RAG and voice integrations.
+1. **Phase 6: Voice I/O**: Implement STT, TTS, and WebSocket audio streaming (`/ws/voice`).
+2. **Phase 5: RAG**: Implement document chunking, embedding store, and a retrieval tool for the agent.
+3. **Phase 10: Telephony & Webhooks**: Connect Twilio or SIP telephony.
+4. **Phase 12: Deployment & Migrations**: Add Alembic database migrations and production setup.

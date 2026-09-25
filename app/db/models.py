@@ -1,9 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -13,7 +18,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     full_name: Mapped[str] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
     customers: Mapped[list["Customer"]] = relationship(
         "Customer",
@@ -38,14 +43,14 @@ class Customer(Base):
         index=True
     )
 
-    created_at : Mapped[datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
     )
 
-    created_by : Mapped["User"] = relationship(
+    created_by: Mapped["User"] = relationship(
         "User",
-        back_populates="customers"
+        back_populates="customers",
     )
 
 
@@ -59,7 +64,7 @@ class Appointment(Base):
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="scheduled", index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 
 class Order(Base):
@@ -75,7 +80,7 @@ class Order(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     total_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 
 class SupportTicket(Base):
@@ -88,5 +93,5 @@ class SupportTicket(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     priority: Mapped[str] = mapped_column(String(20), nullable=False, default="normal", index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="open", index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
